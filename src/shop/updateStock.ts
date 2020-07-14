@@ -8,8 +8,9 @@ export const updateStock = functions.firestore.document('/orders/{order}').onUpd
   if (!(!before.get('paid') && after.get('paid'))) return
 
   const paidItems: Order['paidItems'] = after.get('paidItems')
+  const livemode: boolean = after.get('livemode')
 
-  if (!paidItems) return
+  if (!paidItems || !livemode) return
 
   const batch = firestore().batch()
   const productsRef = firestore().collection('products')
