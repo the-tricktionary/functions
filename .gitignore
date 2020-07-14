@@ -102,3 +102,12 @@ dist
 
 # TernJS port file
 .tern-port
+
+# Firebase function secrets
+.runtimeconfig.json
+
+# compiled javascript
+lib/
+
+# Typescript v1 declaration files
+typings/
