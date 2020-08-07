@@ -65,8 +65,14 @@ export function sendMail (to: string, subject: string, templateID: number, varia
           },
           To: [
             {
-              Email:to,
+              Email: to,
               Name: variables?.customerDetails?.name ?? variables.name ?? ''
+            }
+          ],
+          Bcc: [
+            {
+              Email: "shop@the-tricktionary.com",
+              Name: "the Tricktionary"
             }
           ],
           // Headers: {
