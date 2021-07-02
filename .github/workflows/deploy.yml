@@ -1,0 +1,30 @@
+name: Deploy to firebase functions
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Setup, Build, Publish, and Deploy
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - name: Use Node.js 14
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14
+      - run: npm ci --prefer-offline
+      - run: npm i -g firebase-tools
+
+      - run: npm run build
+      - run: firebase deploy --non-interactive --token "${{ secrets.FIREBASE_TOKEN }}" --only functions -f
