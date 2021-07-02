@@ -8,7 +8,7 @@ interface FSTrickCompletion {
   createdAt: Timestamp
 }
 
-export const createChecklistEntry = functions.database.ref('/checklist/{userId}/{id0}/{id1}')
+export const checklistWrite = functions.database.ref('/checklist/{userId}/{id0}/{id1}')
   .onWrite(async (change, ctx) => {
     const completed: boolean | null = change.after.val()
     const tricksSnap = await firestore().collection('tricks')
