@@ -21,7 +21,7 @@ export const sitemapGet = functions.https.onRequest(async (req, res) => {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${qSnap.docs.map(dSnap => `  <url>
     <loc>https://the-tricktionary.com/trick/${disciplineToSlug(dSnap.get('discipline'))}/${dSnap.get('slug')}</loc>
-    <lastmod>${dSnap.updateTime.toDate().toString()}</lastmod>
+    <lastmod>${dSnap.updateTime.toDate().toISOString()}</lastmod>
     <changefreq>yearly</changefreq>
   </url>`).join('\n')}
 </urlset>`
