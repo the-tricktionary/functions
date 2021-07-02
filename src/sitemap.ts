@@ -27,5 +27,7 @@ ${qSnap.docs.map(dSnap => `  <url>
 </urlset>
 `
 
+  res.set('content-type', 'application/xml')
+
   res.status(200).send(sitemap)
 })
