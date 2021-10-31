@@ -1,5 +1,5 @@
 import * as functions from 'firebase-functions'
-import { firestore } from 'firebase-admin'
+import { firestore, database } from 'firebase-admin'
 import { Timestamp } from '@google-cloud/firestore'
 
 interface RTDSpeedResult {
@@ -22,18 +22,14 @@ interface FSSimpleSpeedResult {
   createdAt: Timestamp
 
   count: number
-  eventDefinitionId: string
+  eventDefinition: {
+    name: string
+    totalDuration: number
+  }
 
   // compat keys
   graphData?: number[]
   rtdKey?: string
-}
-
-interface FSEventDefinition {
-  name: string
-  totalDuration: number
-  abbr?: string
-  lookupCode?: string
 }
 
 export const speedCreated = functions.database.ref('/speed/scores/{userId}/{createdAt}')
@@ -54,60 +50,16 @@ export const speedCreated = functions.database.ref('/speed/scores/{userId}/{crea
       }
     }
 
-    let eventDefinitionId: string
-    let qSnap
-
-    // yes this is verbose but ugh
-    if (!data.event) {
-      functions.logger.info('Speed Score has no event specified')
-      qSnap = await firestore().collection('event-definitions')
-        .where('name', '==', 'Unknown')
-        .where('totalDuration', '==', data.time)
-        .get()
-
-      if (qSnap.empty) {
-        functions.logger.debug(`Creating unkown event definition for duration ${data.time}`)
-        const def: FSEventDefinition = {
-          name: 'Unknown',
-          totalDuration: data.time
-        }
-        const dSnap = await firestore().collection('event-definitions').add(def)
-        eventDefinitionId = dSnap.id
-      } else {
-        eventDefinitionId = qSnap.docs[0].id
-        functions.logger.debug(`Using existing unkown event definition for duration ${data.time}`)
-      }
-    } else {
-      functions.logger.info('Speed Score has an event specified')
-      qSnap = await firestore().collection('event-definitions')
-        .where('abbr', '==', data.event)
-        .where('totalDuration', '==', data.time)
-        .get()
-
-      if (qSnap.empty) {
-        functions.logger.debug(`Creating event definition for ${data.event} with duration ${data.time}`)
-        const def: FSEventDefinition = {
-          name: data.event,
-          totalDuration: data.time,
-          abbr: data.event
-        }
-        const dSnap = await firestore().collection('event-definitions').add(def)
-        eventDefinitionId = dSnap.id
-      } else {
-        eventDefinitionId = qSnap.docs[0].id
-        functions.logger.debug(`Using existing event definition for ${data.event} with duration ${data.time}`)
-      }
-    }
-
-    functions.logger.debug({ eventDefinitionId })
-
     const reformatted: FSSimpleSpeedResult = {
       ...(data.name ? { name: data.name } : {}),
       userId: ctx.params.userId,
       createdAt: Timestamp.fromMillis(parseInt(ctx.params.createdAt, 10) * 1000),
 
       count: data.score,
-      eventDefinitionId,
+      eventDefinition: {
+        name: data.event ?? 'Unknown Event',
+        totalDuration: data.time
+      },
 
       graphData: data.graphData,
       rtdKey: ctx.params.createdAt
@@ -158,4 +110,15 @@ export const speedDeleted = functions.database.ref('/speed/scores/{userId}/{crea
     }
 
     return batch.commit()
+  })
+
+export const v4SpeedDeleted = functions.firestore.document('speed-results/{docId}')
+  .onDelete(async (dSnap, ctx) => {
+    const data = dSnap.data() as FSSimpleSpeedResult
+
+    // we only need to process entries that exist in the old database
+    if (data.rtdKey == null) return
+
+    // remove it from the old DB too so it doesn't come back
+    await database().ref(`/speed/scores/${data.userId}/${data.rtdKey}`).remove()
   })
