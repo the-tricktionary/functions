@@ -1,6 +1,7 @@
-import * as functions from 'firebase-functions'
-import { firestore, database } from 'firebase-admin'
-import { Timestamp } from '@google-cloud/firestore'
+import * as functions from 'firebase-functions/v1'
+import { logger } from 'firebase-functions/logger'
+import { getFirestore, Timestamp } from 'firebase-admin/firestore'
+import { getDatabase } from 'firebase-admin/database'
 
 interface RTDSpeedResult {
   avgJumps: number
@@ -36,16 +37,16 @@ export const speedCreated = functions.database.ref('/speed/scores/{userId}/{crea
   .onCreate(async (snap, ctx) => {
     const data: RTDSpeedResult = snap.val()
 
-    functions.logger.info('input', data)
+    logger.info('input', data)
 
     {
-      const qSnap = await firestore().collection('speed-results')
+      const qSnap = await getFirestore().collection('speed-results')
         .where('userId', '==', ctx.params.userId)
         .where('rtdKey', '==', ctx.params.createdAt)
         .get()
 
       if (!qSnap.empty) {
-        functions.logger.info('Speed score already processed')
+        logger.info('Speed score already processed')
         return true
       }
     }
@@ -65,51 +66,51 @@ export const speedCreated = functions.database.ref('/speed/scores/{userId}/{crea
       rtdKey: ctx.params.createdAt
     }
 
-    functions.logger.info('result', reformatted)
+    logger.info('result', reformatted)
 
-    return firestore().collection('speed-results').add(reformatted)
+    return await getFirestore().collection('speed-results').add(reformatted)
   })
 
 export const speedUpdated = functions.database.ref('/speed/scores/{userId}/{createdAt}')
   .onUpdate(async (change, ctx) => {
-    const qSnap = await firestore().collection('speed-results')
+    const qSnap = await getFirestore().collection('speed-results')
       .where('userId', '==', ctx.params.userId)
       .where('rtdKey', '==', ctx.params.createdAt)
       .get()
 
     if (!qSnap.size) {
-      functions.logger.warn('No target speed scores to update', ctx.params)
+      logger.warn('No target speed scores to update', ctx.params)
       return true
     }
 
-    const batch = firestore().batch()
+    const batch = getFirestore().batch()
 
     for (const dSnap of qSnap.docs) {
       batch.update(dSnap.ref, { name: change.after.val().name })
     }
 
-    return batch.commit()
+    return await batch.commit()
   })
 
 export const speedDeleted = functions.database.ref('/speed/scores/{userId}/{createdAt}')
   .onDelete(async (snap, ctx) => {
-    const qSnap = await firestore().collection('speed-results')
+    const qSnap = await getFirestore().collection('speed-results')
       .where('userId', '==', ctx.params.userId)
       .where('rtdKey', '==', ctx.params.createdAt)
       .get()
 
     if (!qSnap.size) {
-      functions.logger.info('No target speed scores to delete', ctx.params)
+      logger.info('No target speed scores to delete', ctx.params)
       return true
     }
 
-    const batch = firestore().batch()
+    const batch = getFirestore().batch()
 
     for (const dSnap of qSnap.docs) {
       batch.delete(dSnap.ref)
     }
 
-    return batch.commit()
+    return await batch.commit()
   })
 
 export const v4SpeedDeleted = functions.firestore.document('speed-results/{docId}')
@@ -120,5 +121,5 @@ export const v4SpeedDeleted = functions.firestore.document('speed-results/{docId
     if (data.rtdKey == null) return
 
     // remove it from the old DB too so it doesn't come back
-    await database().ref(`/speed/scores/${data.userId}/${data.rtdKey}`).remove()
+    await getDatabase().ref(`/speed/scores/${data.userId}/${data.rtdKey}`).remove()
   })

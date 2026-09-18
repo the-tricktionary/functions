@@ -1,15 +1,11 @@
 {
+  "extends": "@tsconfig/node24/tsconfig.json",
   "compilerOptions": {
-    "target": "es2017",
-    "module": "commonjs",
-    "lib": ["ES2017"],
     "sourceMap": true,
     "outDir": "dist",
     "rootDir": "src",
-    "strict": true,
     "resolveJsonModule": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true
+    "forceConsistentCasingInFileNames": true
   },
   "include": [
     "src"
